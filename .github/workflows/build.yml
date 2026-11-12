@@ -1,0 +1,53 @@
+name: BharatShop No-Vault Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'BharatShop-NoVault-Source.zip'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Extract No-Vault source
+        run: |
+          unzip -o BharatShop-NoVault-Source.zip -d source
+          find source -maxdepth 4 -type f | sort
+
+      - name: Build with Maven
+        run: |
+          POM="$(find source -name pom.xml -print -quit)"
+          test -n "$POM"
+          mvn -B -f "$POM" clean package
+
+      - name: Verify plugin JAR
+        run: |
+          JAR="$(find source -path '*/target/*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
+          test -n "$JAR"
+          test -s "$JAR"
+          echo "Verified JAR: $JAR"
+          ls -lh "$JAR"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BharatShop-1.0.0
+          path: source/**/target/*.jar
+          if-no-files-found: error
+          retention-days: 14
